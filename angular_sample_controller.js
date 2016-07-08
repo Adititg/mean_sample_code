@@ -5,12 +5,15 @@
 (function() {
 'use strict';
 
+/*Declaring controller*/
 angular
 	.module('core')
 	.controller('ProjectionController', ProjectionController);
 
+/*Injecting dependencies*/
 ProjectionController.$inject = ['$scope', 'projectionService', '$sce'];
 
+/*Defining controller body*/
 function ProjectionController($scope, projectionService, $sce) {
 
 	var vm = this;	
@@ -23,6 +26,8 @@ function ProjectionController($scope, projectionService, $sce) {
 		good:0
 	}; 
 
+	/* a watcher that watches for a change in variable and 
+	perform an operation accordingly */
     $scope.$watch('investment', function(newval, oldval) {
 			
 		renderProjections($scope.investment.risk_level);
@@ -35,6 +40,7 @@ function ProjectionController($scope, projectionService, $sce) {
 		initContent($scope.investment.risk_level);
 	});
 
+	/*function that initialises the content to some default values*/
 	function initContent (risk_level) { 
 
 		projectionService.getContent(risk_level).then(function(res){
@@ -48,6 +54,12 @@ function ProjectionController($scope, projectionService, $sce) {
 		});
 	}
 
+	/** 
+	* Rendering the projections by getting data from backend
+	* formatting data according the needs and displaying that to 
+	* user.
+	* 
+	*/
 	function renderProjections(risk_level){
 
 		projectionService.getChartData(risk_level).then(function(res){
@@ -58,164 +70,20 @@ function ProjectionController($scope, projectionService, $sce) {
 			} else{
 				$('.chart-outer').hide();
 			}
-			/*vm.data = res;
+			vm.data = res;
 			var series = calculateSeries($scope.investment.initial_contribution, $scope.investment.horizon, res);
 			if(series.length){
 				$('#linechart').show();
 				renderChart(series);
 			} else{
 				$('#linechart').hide();
-			}*/
+			}
 		},function (err){
 			toastr.error('Error loading content, please refresh');
 		});
 	}
 	
-	function fillChances(projection_levels_data){
-
-		vm.chances.vPoor 	 = getRowByProjectionLevel(projection_levels_data, vm.projection_levels[0]).interest_rate;
-		vm.chances.poor 	 = getRowByProjectionLevel(projection_levels_data, vm.projection_levels[1]).interest_rate;
-		vm.chances.expected = getRowByProjectionLevel(projection_levels_data, vm.projection_levels[2]).interest_rate;
-		vm.chances.good 	 = getRowByProjectionLevel(projection_levels_data, vm.projection_levels[3]).interest_rate;
-	}
-	/*function calculateSeries (amt, horizon, data){
-
-		var o 			= {};
-		if(data.length){
-			o.years 	= fillYears(horizon);
-			o.vPoor 	= fillSeriesData(vm.projection_levels[0], amt, horizon, data);
-			o.poor 		= fillSeriesData(vm.projection_levels[1], amt, horizon, data);
-			o.expected 	= fillSeriesData(vm.projection_levels[2], amt, horizon, data);
-			o.good 		= fillSeriesData(vm.projection_levels[3], amt, horizon, data);
-			o = mergeObjAsArr(o);
-		}
-		return o;
-	}
-	function mergeObjAsArr(o){
-		var arr = [];
-		for (var i = 0; i < o.years.length; i++) {
-			var t = [];
-
-			var y = moment().add(i,'years').format('YYYY');
-
-			var tooltipHtml = "<div style='padding:5px;min-width:150px'><strong>"
-			+"Year: "+y
-			+"<br><span style='color:red'>Very Poor $"+ Math.round(o.vPoor[i])+"</span>"
-			+"<br><span style='color:silver'>Poor $"+ Math.round(o.poor[i])+"</span>"
-			+"<br><span style='color:gold'>Expected $"+ Math.round(o.expected[i])+"</span>"
-			+"<br><span style='color:green'>Good $"+ Math.round(o.good[i])+"</span>"
-			+"</strong></div>"
-
-			t.push(o.years[i]);
-			// t.push(tooltipHtml);
-			t.push(Math.round(o.vPoor[i]));
-			t.push(Math.round(o.poor[i]));
-			t.push(Math.round(o.expected[i]));
-			t.push(Math.round(o.good[i]));
-			t.push($scope.investment.target_amt);
-			t.push(i==1?'Target Value ($'+$scope.investment.target_amt+')':'');
-			arr.push(t);
-		}
-		return arr;
-	}
-	function renderChart(series){
-
-		google.charts.setOnLoadCallback(drawBasic);
-		function drawBasic() {
-
-		    var data = new google.visualization.DataTable();
-		    data.addColumn('date', 'Year');
-		    // data.addColumn({type:'string',role:'tooltip','p': {'html': true}});
-		    data.addColumn('number', 'Very Poor');
-		    data.addColumn('number', 'Poor');
-		    data.addColumn('number', 'Expected');
-		    data.addColumn('number', 'Good');
-		    data.addColumn('number', 'Target Value');
-		    data.addColumn({type:'string',role:'annotation'});
-
-		    data.addRows(series);
-
-		    var options = {
-		    	max:$scope.investment.target_amt+50000,
-		      	chartArea:{left:100,right:10,top:50,bottom:50},
-		        hAxis: {
-		        	title:'TImeframe',
-		        },
-		        legend:{position:'top'},
-		        colors:['red','silver', 'gold', 'green', '#6E8141'],
-              	focusTarget:'category',
-              	tooltip:{isHtml:true, ignoreBounds:$(window).width()<700? false:true},
-		        vAxis: {
-		        	title:'Projected Value',
-					format:'$#,##,###',
-					baselineColor:'#666666',
-		        },
-	          	seriesType:'line',
-	          	series: {
-	              	4:{
-	              		type:'line',lineDashStyle: [10, 2],lineWidth:1,enableInteractivity: false
-	              	}
-	          	},
-				annotations: {
-					style:'none',
-					textStyle: {
-						bold:true,
-					}
-				}
-	      	};
-
-	      	var chart = new google.visualization.ComboChart(document.getElementById('linechart'));
-		    chart.draw(data, options);
-		}
-	}
-	function fillYears(horizon){
-		var y = [];
-		for (var i = 0; i < horizon; i++) {
-			// y.push(i);
-			y.push(new Date(moment().add(i,'years').format()));
-		}
-		return y;
-	}*/
-	function fillContributionsQuarterly(amt, horizon, monthly_contribution){
-		
-		var t = [];
-		for (var i = 0; i <= (parseInt(horizon)*4)+1; i++) {
-			var a = [];
-			a.push(parseInt(moment(getTimestampToday()).add(i*3,'months').format('x')));
-			a.push(parseFloat(amt));
-			t.push(a);
-			amt = Math.round(parseInt(amt) + ((parseInt(monthly_contribution)*12)/4));
-		}
-		return t;
-	}
-	function fillContributions(amt, horizon, monthly_contribution){
-
-		if(horizon<4){
-			return fillContributionsQuarterly(amt, horizon, monthly_contribution);
-		}		
-		var t = [];
-		for (var i = 0; i <= parseInt(horizon)+1; i++) {
-			var a = [];
-			a.push(parseInt(moment(getTimestampToday()).add(i,'years').format('x')));
-			a.push(parseFloat(amt));
-			t.push(a);
-			amt = parseInt(amt) + parseInt(monthly_contribution)*12;
-		}
-		return t;
-	}
-	function fillSeriesDataQuarterly (projection_level, amt, horizon, data, monthly_contribution){
-
-		var row = getRowByProjectionLevel(data, projection_level);
-		var t = [];
-		for (var i = 0; i <= (parseInt(horizon)*4)+1; i++) {
-			var a = [];
-			a.push(parseInt(moment(getTimestampToday()).add(i*3,'months').format('x')));
-			a.push(parseFloat(amt));
-			t.push(a);
-			amt = getAmtWithInterestAdded(parseFloat(amt)+(parseFloat(monthly_contribution)*3), parseFloat(row.interest_rate)/4);
-		}
-		return t;
-	}
+	/*filling data in to chart series to show them on the view*/
 	function fillSeriesData (projection_level, amt, horizon, data, monthly_contribution){
 
 		if(horizon<4){
@@ -232,6 +100,8 @@ function ProjectionController($scope, projectionService, $sce) {
 		}
 		return t;
 	}
+
+	/* Simple maths calculation subfunction */
 	function getAmtWithInterestAdded(amt, interest_rate){
 		return Math.round(parseFloat(amt) + parseFloat(((parseFloat(amt)*parseFloat(interest_rate))/100)));
 	}
@@ -248,6 +118,12 @@ function ProjectionController($scope, projectionService, $sce) {
 		return tmp;
 	}
 
+	/**
+	 * creating a chart that projects the values
+	 * @param  {[Object]} projection_levels_data
+	 * @return {[render]} renders the chart
+	 * 
+	 */
 	function createHighChart(projection_levels_data){
 	
 		fillChances(projection_levels_data);
@@ -452,12 +328,15 @@ function ProjectionController($scope, projectionService, $sce) {
 		    });
 		});	
 	}
+	/*function that returns timestamp for today*/
 	function getTimestampToday(){
 		return parseInt(moment(moment().format('DD-MM-YYYY'), 'DD-MM-YYYY').format('x'));
 	}
+	/*function that returns timestamp for n years after today*/
 	function getTimestampAfter(years){
 		return parseInt(moment(getTimestampToday()).add(years, 'years').format('x'));
 	}
+	/*preparing the chart data by passing the values*/
 	function getChartData (projection_levels_data){
 
 		var chartData 		= {};
@@ -466,7 +345,9 @@ function ProjectionController($scope, projectionService, $sce) {
 		chartData.series 	= calculateSeries ($scope.investment.initial_contribution, $scope.investment.horizon, projection_levels_data, $scope.investment.monthly_contribution);
 		return chartData;
 	}
-
+	/* A calculation function that fills values for diffrent series according to 
+	*	predefined farmula
+	*/
 	function calculateSeries (amt, horizon, data, monthly_contribution){
 
 		var o 				= {};
